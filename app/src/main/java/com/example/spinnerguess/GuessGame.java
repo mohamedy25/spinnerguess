@@ -28,6 +28,7 @@ public class GuessGame {
     private int remainingAttempts;
     private boolean isGameOver;
     private Difficulty currentDifficulty;
+    private int score;
 
     public GuessGame(Difficulty difficulty) {
         resetGame(difficulty);
@@ -37,12 +38,13 @@ public class GuessGame {
         this.currentDifficulty = difficulty;
         this.remainingAttempts = difficulty.getMaxAttempts();
         this.isGameOver = false;
+        this.score = 0;
 
         Random random = new Random();
         this.targetNumber = random.nextInt(difficulty.getMaxNumber()) + 1;
     }
 
-    public String makeGuess(int userGuess) {
+    public String makeGuess(int userGuess, int secondsRemaining) {
         if (isGameOver) {
             return "Game is already over!";
         }
@@ -51,6 +53,7 @@ public class GuessGame {
 
         if (userGuess == targetNumber) {
             isGameOver = true;
+            calculateScore(secondsRemaining);
             return "Correct guess! You won! 🎉";
         } else if (remainingAttempts <= 0) {
             isGameOver = true;
@@ -60,6 +63,10 @@ public class GuessGame {
         } else {
             return "Target number is lower than " + userGuess;
         }
+    }
+
+    private void calculateScore(int secondsRemaining) {
+        this.score = (remainingAttempts + 1) * 10 + secondsRemaining * 5;
     }
 
     public void timeOut() {
@@ -76,5 +83,9 @@ public class GuessGame {
 
     public Difficulty getCurrentDifficulty() {
         return currentDifficulty;
+    }
+
+    public int getScore() {
+        return score;
     }
 }

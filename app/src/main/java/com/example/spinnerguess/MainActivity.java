@@ -15,12 +15,13 @@ public class MainActivity extends AppCompatActivity {
 
     private Spinner spinnerDifficulty;
     private EditText etGuess;
-    private TextView tvFeedback, tvAttempts, tvTimer;
+    private TextView tvFeedback, tvAttempts, tvTimer, tvScore;
     private Button btnGuess, btnNewGame;
 
     private GuessGame game;
     private CountDownTimer countDownTimer;
     private boolean isTimerRunning = false;
+    private int secondsRemaining = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
         tvFeedback = findViewById(R.id.tvFeedback);
         tvAttempts = findViewById(R.id.tvAttempts);
         tvTimer = findViewById(R.id.tvTimer);
+        tvScore = findViewById(R.id.tvScore);
         btnGuess = findViewById(R.id.btnGuess);
         btnNewGame = findViewById(R.id.btnNewGame);
     }
@@ -55,8 +57,7 @@ public class MainActivity extends AppCompatActivity {
     private void setupSpinner() {
         ArrayAdapter<GuessGame.Difficulty> adapter = new ArrayAdapter<>(
                 this,
-                android.R.layout.simple_spinner_item,
-                GuessGame.Difficulty.values()
+                android.R.layout.simple_spinner_item, GuessGame.Difficulty.values()
         );
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerDifficulty.setAdapter(adapter);
@@ -71,6 +72,7 @@ public class MainActivity extends AppCompatActivity {
         etGuess.setText("");
         etGuess.setEnabled(true);
         btnGuess.setEnabled(true);
+        tvScore.setText("Score: 0");
         tvTimer.setText("Time remaining: " + selectedDifficulty.getTimeInSeconds() + "s");
         tvFeedback.setText("Click on the input field to start the timer!");
         updateAttemptsUI();
@@ -85,9 +87,10 @@ public class MainActivity extends AppCompatActivity {
         }
 
         int userGuess = Integer.parseInt(input);
-        String feedback = game.makeGuess(userGuess);
+        String feedback = game.makeGuess(userGuess, secondsRemaining);
 
         tvFeedback.setText(feedback);
+        tvScore.setText("Score: " + game.getScore());
         updateAttemptsUI();
 
         if (game.isGameOver()) {
@@ -99,14 +102,17 @@ public class MainActivity extends AppCompatActivity {
 
     private void startTimer(int seconds) {
         isTimerRunning = true;
+        secondsRemaining = seconds;
         countDownTimer = new CountDownTimer(seconds * 1000L, 1000) {
             @Override
             public void onTick(long millisUntilFinished) {
-                tvTimer.setText("Time remaining: " + (millisUntilFinished / 1000) + "s");
+                secondsRemaining = (int) (millisUntilFinished / 1000);
+                tvTimer.setText("Time remaining: " + secondsRemaining + "s");
             }
 
             @Override
             public void onFinish() {
+                secondsRemaining = 0;
                 tvTimer.setText("Time's up!");
                 game.timeOut();
                 tvFeedback.setText("Time is up! You lost.");
