@@ -11,10 +11,12 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.util.ArrayList;
+
 public class MainActivity extends AppCompatActivity {
 
     private Spinner spinnerDifficulty;
-    private EditText etGuess;
+    private EditText etGuess, etName;
     private TextView tvFeedback, tvAttempts, tvTimer, tvScore;
     private Button btnGuess, btnNewGame;
 
@@ -23,10 +25,15 @@ public class MainActivity extends AppCompatActivity {
     private boolean isTimerRunning = false;
     private int secondsRemaining = 0;
 
+    // استخدام DBHelper الحالي بدون أي تعديل عليه
+    private DBHelper db;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        db = new DBHelper(this);
 
         initViews();
         setupSpinner();
@@ -52,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
         tvScore = findViewById(R.id.tvScore);
         btnGuess = findViewById(R.id.btnGuess);
         btnNewGame = findViewById(R.id.btnNewGame);
+        etName = findViewById(R.id.name);
     }
 
     private void setupSpinner() {
@@ -137,6 +145,32 @@ public class MainActivity extends AppCompatActivity {
         cancelTimer();
         etGuess.setEnabled(false);
         btnGuess.setEnabled(false);
+        updateDB();
+    }
+
+    private void updateDB() {
+        String name = etName.getText().toString().trim();
+        if (name.isEmpty()) {
+            name = "Player"; // Default name
+        }
+
+        int currentScore = game.getScore();
+        ArrayList<ModelUser> users = db.genericSelectByUserName(name);
+
+        if (!users.isEmpty()) {
+            // Player exists: update if current score is higher than saved score
+            ModelUser existingUser = users.get(0);
+            if (currentScore > existingUser.getScore()) {
+                existingUser.setScore(currentScore);
+                db.update(existingUser);
+                Toast.makeText(this, "New High Score Saved!", Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            // New player: insert record
+            ModelUser newUser = new ModelUser(name, currentScore, 0);
+            db.insert(newUser);
+            Toast.makeText(this, "Score Saved!", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
