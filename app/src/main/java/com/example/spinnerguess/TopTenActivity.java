@@ -19,18 +19,21 @@ public class TopTenActivity extends AppCompatActivity {
         listViewTop10 = findViewById(R.id.listViewTop10);
         dbHelper = new DBHelper(this);
 
-        // جلب أعلى 10 مستخدمين من قاعدة البيانات
-        ArrayList<ModelUser> topUsers = dbHelper.getTop10Users();
+        // جلب أعلى 3 مستخدمين فقط من قاعدة البيانات
+        ArrayList<ModelUser> topUsers = dbHelper.getTop3Users();
 
-        // تجهيز النصوص لعرضها في القائمة (الاسم والنقاط)
+        // تجهيز النصوص لعرض اسم المستخدم والنتيجة لأفضل 3 لاعبين فقط
         ArrayList<String> displayList = new ArrayList<>();
         int rank = 1;
         for (ModelUser user : topUsers) {
-            displayList.add(rank + ". " + user.getUserName() + "  -  " + user.getScore() + " نقطة");
+            String playerName = user.getUserName();
+            int playerScore = user.getScore();
+
+            displayList.add(rank + ". " + playerName + "  -  Score: " + playerScore);
             rank++;
         }
 
-        // ربط البيانات بالـ ListView
+        // ربط البيانات بالـ ListView عبر الـ Adapter
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 this,
                 android.R.layout.simple_list_item_1,

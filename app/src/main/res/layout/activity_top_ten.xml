@@ -18,8 +18,8 @@
     <ListView
         android:id="@+id/listViewTop10"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="193dp"
         android:divider="@android:color/darker_gray"
-        android:dividerHeight="1dp"/>
+        android:dividerHeight="1dp" />
 
 </LinearLayout>

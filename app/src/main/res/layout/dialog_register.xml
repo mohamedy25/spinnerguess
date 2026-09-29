@@ -15,6 +15,14 @@
         android:layout_marginBottom="16dp"/>
 
     <EditText
+        android:id="@+id/name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="name"
+        android:inputType="text"
+        android:layout_marginBottom="12dp"/>
+
+    <EditText
         android:id="@+id/etRegName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -26,7 +34,7 @@
         android:id="@+id/etRegPassword"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Password (>=6 chars, letters &amp; numbers)"
+        android:hint="Password (name>=6 chars, letters &amp; numbers)"
         android:inputType="textPassword"
         android:layout_marginBottom="12dp"/>
 
@@ -38,7 +46,6 @@
         android:inputType="textPassword"
         android:layout_marginBottom="20dp"/>
 
-    <!-- الكبستين المطلوبات للدايالوج الثاني -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

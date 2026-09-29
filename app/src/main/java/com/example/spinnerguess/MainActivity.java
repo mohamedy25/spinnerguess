@@ -40,7 +40,11 @@ public class MainActivity extends AppCompatActivity {
         initViews();
         setupSpinner();
 
+        // إعداد حقل الاسم ليعرض اسم المستخدم بوضوح طوال اللعبة مع منعه من التعديل اليدوي
         etName.setEnabled(false);
+        etName.setFocusable(false);
+        etName.setClickable(false);
+
         showLoginDialog();
 
         etGuess.setOnFocusChangeListener((v, hasFocus) -> {
@@ -184,7 +188,6 @@ public class MainActivity extends AppCompatActivity {
         return hasLetter && hasDigit;
     }
 
-    // الدايالوج الأول: تسجيل الدخول (Login)
     private void showLoginDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View view = getLayoutInflater().inflate(R.layout.dialog_login, null);
@@ -198,7 +201,6 @@ public class MainActivity extends AppCompatActivity {
 
         AlertDialog dialog = builder.create();
 
-        // كبسة تسجيل الدخول والتحقق من البيانات
         btnLogin.setOnClickListener(v -> {
             String name = etLoginName.getText().toString().trim();
             String pass = etLoginPassword.getText().toString().trim();
@@ -272,12 +274,10 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            // حفظ المستخدم الجديد في قاعدة البيانات
             ModelUser newUser = new ModelUser(nameVal, 0, 0, pass);
             db.insert(newUser);
             Toast.makeText(this, "Registered Successfully!", Toast.LENGTH_SHORT).show();
 
-            // إغلاق دايالوج التسجيل والرجوع لدايالوج تسجيل الدخول
             dialog.dismiss();
             showLoginDialog();
         });
