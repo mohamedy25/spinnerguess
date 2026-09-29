@@ -1,7 +1,9 @@
 package com.example.spinnerguess;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -9,6 +11,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.ArrayList;
@@ -25,7 +28,6 @@ public class MainActivity extends AppCompatActivity {
     private boolean isTimerRunning = false;
     private int secondsRemaining = 0;
 
-    // استخدام DBHelper الحالي بدون أي تعديل عليه
     private DBHelper db;
 
     @Override
@@ -37,7 +39,9 @@ public class MainActivity extends AppCompatActivity {
 
         initViews();
         setupSpinner();
-        startNewGame();
+
+        etName.setEnabled(false);
+        showLoginDialog();
 
         etGuess.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus && !isTimerRunning && !game.isGameOver()) {
@@ -146,31 +150,139 @@ public class MainActivity extends AppCompatActivity {
         etGuess.setEnabled(false);
         btnGuess.setEnabled(false);
         updateDB();
+
+        Intent intent = new Intent(MainActivity.this, TopTenActivity.class);
+        startActivity(intent);
     }
 
     private void updateDB() {
         String name = etName.getText().toString().trim();
-        if (name.isEmpty()) {
-            name = "Player"; // Default name
-        }
+        if (name.isEmpty()) return;
 
         int currentScore = game.getScore();
         ArrayList<ModelUser> users = db.genericSelectByUserName(name);
 
         if (!users.isEmpty()) {
-            // Player exists: update if current score is higher than saved score
             ModelUser existingUser = users.get(0);
             if (currentScore > existingUser.getScore()) {
                 existingUser.setScore(currentScore);
                 db.update(existingUser);
                 Toast.makeText(this, "New High Score Saved!", Toast.LENGTH_SHORT).show();
             }
-        } else {
-            // New player: insert record
-            ModelUser newUser = new ModelUser(name, currentScore, 0);
-            db.insert(newUser);
-            Toast.makeText(this, "Score Saved!", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private boolean isValidPassword(String password) {
+        if (password.length() < 6) return false;
+        boolean hasLetter = false;
+        boolean hasDigit = false;
+        for (int i = 0; i < password.length(); i++) {
+            char c = password.charAt(i);
+            if (Character.isLetter(c)) hasLetter = true;
+            if (Character.isDigit(c)) hasDigit = true;
+        }
+        return hasLetter && hasDigit;
+    }
+
+    // الدايالوج الأول: تسجيل الدخول (Login)
+    private void showLoginDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View view = getLayoutInflater().inflate(R.layout.dialog_login, null);
+        builder.setView(view);
+        builder.setCancelable(false);
+
+        EditText etLoginName = view.findViewById(R.id.etLoginName);
+        EditText etLoginPassword = view.findViewById(R.id.etLoginPassword);
+        Button btnLogin = view.findViewById(R.id.btnLogin);
+        Button btnGoToRegister = view.findViewById(R.id.btnGoToRegister);
+
+        AlertDialog dialog = builder.create();
+
+        // كبسة تسجيل الدخول والتحقق من البيانات
+        btnLogin.setOnClickListener(v -> {
+            String name = etLoginName.getText().toString().trim();
+            String pass = etLoginPassword.getText().toString().trim();
+
+            if (name.isEmpty() || pass.isEmpty()) {
+                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            ArrayList<ModelUser> users = db.genericSelectByUserName(name);
+            if (!users.isEmpty() && users.get(0).getPassword().equals(pass)) {
+                etName.setText(name);
+                Toast.makeText(this, "Login Successful!", Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+                startNewGame();
+            } else {
+                Toast.makeText(this, "Invalid Username or Password!", Toast.LENGTH_LONG).show();
+            }
+        });
+
+        btnGoToRegister.setOnClickListener(v -> {
+            dialog.dismiss();
+            showRegisterDialog();
+        });
+
+        dialog.show();
+    }
+
+    private void showRegisterDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View view = getLayoutInflater().inflate(R.layout.dialog_register, null);
+        builder.setView(view);
+        builder.setCancelable(false);
+
+        EditText etRegName = view.findViewById(R.id.etRegName);
+        EditText etRegPassword = view.findViewById(R.id.etRegPassword);
+        EditText etRegConfirmPassword = view.findViewById(R.id.etRegConfirmPassword);
+        Button btnRegCancel = view.findViewById(R.id.btnRegCancel);
+        Button btnRegSubmit = view.findViewById(R.id.btnRegSubmit);
+
+        AlertDialog dialog = builder.create();
+
+        btnRegCancel.setOnClickListener(v -> {
+            dialog.dismiss();
+            showLoginDialog();
+        });
+
+        btnRegSubmit.setOnClickListener(v -> {
+            String nameVal = etRegName.getText().toString().trim();
+            String pass = etRegPassword.getText().toString().trim();
+            String confirmPass = etRegConfirmPassword.getText().toString().trim();
+
+            if (nameVal.isEmpty()) {
+                Toast.makeText(this, "Please enter username", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (!isValidPassword(pass)) {
+                Toast.makeText(this, "Password must be >= 6 chars and contain letters & numbers", Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            if (!pass.equals(confirmPass)) {
+                Toast.makeText(this, "Passwords do not match", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            ArrayList<ModelUser> existing = db.genericSelectByUserName(nameVal);
+            if (!existing.isEmpty()) {
+                Toast.makeText(this, "Username already exists!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // حفظ المستخدم الجديد في قاعدة البيانات
+            ModelUser newUser = new ModelUser(nameVal, 0, 0, pass);
+            db.insert(newUser);
+            Toast.makeText(this, "Registered Successfully!", Toast.LENGTH_SHORT).show();
+
+            // إغلاق دايالوج التسجيل والرجوع لدايالوج تسجيل الدخول
+            dialog.dismiss();
+            showLoginDialog();
+        });
+
+        dialog.show();
     }
 
     @Override
