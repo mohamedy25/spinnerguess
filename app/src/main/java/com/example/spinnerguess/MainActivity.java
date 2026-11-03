@@ -14,6 +14,9 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
@@ -29,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
     private int secondsRemaining = 0;
 
     private DBHelper db;
+    private FirebaseAuth mAuth; // הגדרת אובייקט Firebase Auth
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,19 +40,17 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         db = new DBHelper(this);
+        mAuth = FirebaseAuth.getInstance(); // אתחול Firebase Auth[cite: 6]
 
         initViews();
         setupSpinner();
 
-        // إعداد حقل الاسم ليعرض اسم المستخدم بوضوح طوال اللعبة مع منعه من التعديل اليدوي
         etName.setEnabled(false);
         etName.setFocusable(false);
         etName.setClickable(false);
 
-        showLoginDialog();
-
         etGuess.setOnFocusChangeListener((v, hasFocus) -> {
-            if (hasFocus && !isTimerRunning && !game.isGameOver()) {
+            if (hasFocus && !isTimerRunning && game != null && !game.isGameOver()) {
                 GuessGame.Difficulty selectedDifficulty = (GuessGame.Difficulty) spinnerDifficulty.getSelectedItem();
                 startTimer(selectedDifficulty.getTimeInSeconds());
             }
@@ -56,6 +58,19 @@ public class MainActivity extends AppCompatActivity {
 
         btnGuess.setOnClickListener(v -> handleGuess());
         btnNewGame.setOnClickListener(v -> startNewGame());
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        // בדיקה אם המשתמש כבר מחובר בעת העלייה למסך[cite: 9]
+        FirebaseUser currentUser = mAuth.getCurrentUser(); //[cite: 9]
+        if (currentUser != null) {
+            etName.setText(currentUser.getEmail());
+            startNewGame();
+        } else {
+            showLoginDialog();
+        }
     }
 
     private void initViews() {
@@ -176,25 +191,13 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private boolean isValidPassword(String password) {
-        if (password.length() < 6) return false;
-        boolean hasLetter = false;
-        boolean hasDigit = false;
-        for (int i = 0; i < password.length(); i++) {
-            char c = password.charAt(i);
-            if (Character.isLetter(c)) hasLetter = true;
-            if (Character.isDigit(c)) hasDigit = true;
-        }
-        return hasLetter && hasDigit;
-    }
-
     private void showLoginDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View view = getLayoutInflater().inflate(R.layout.dialog_login, null);
         builder.setView(view);
         builder.setCancelable(false);
 
-        EditText etLoginName = view.findViewById(R.id.etLoginName);
+        EditText etLoginEmail = view.findViewById(R.id.etLoginEmail);
         EditText etLoginPassword = view.findViewById(R.id.etLoginPassword);
         Button btnLogin = view.findViewById(R.id.btnLogin);
         Button btnGoToRegister = view.findViewById(R.id.btnGoToRegister);
@@ -202,23 +205,26 @@ public class MainActivity extends AppCompatActivity {
         AlertDialog dialog = builder.create();
 
         btnLogin.setOnClickListener(v -> {
-            String name = etLoginName.getText().toString().trim();
+            String email = etLoginEmail.getText().toString().trim();
             String pass = etLoginPassword.getText().toString().trim();
 
-            if (name.isEmpty() || pass.isEmpty()) {
+            if (email.isEmpty() || pass.isEmpty()) {
                 Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            ArrayList<ModelUser> users = db.genericSelectByUserName(name);
-            if (!users.isEmpty() && users.get(0).getPassword().equals(pass)) {
-                etName.setText(name);
-                Toast.makeText(this, "Login Successful!", Toast.LENGTH_SHORT).show();
-                dialog.dismiss();
-                startNewGame();
-            } else {
-                Toast.makeText(this, "Invalid Username or Password!", Toast.LENGTH_LONG).show();
-            }
+            // התחברות באמצעות Firebase Authentication[cite: 8]
+            mAuth.signInWithEmailAndPassword(email, pass)
+                    .addOnCompleteListener(this, task -> {
+                        if (task.isSuccessful()) { //[cite: 8]
+                            etName.setText(email);
+                            Toast.makeText(this, "Login Successful!", Toast.LENGTH_SHORT).show();
+                            dialog.dismiss();
+                            startNewGame();
+                        } else {
+                            Toast.makeText(this, "Authentication Failed: " + task.getException().getMessage(), Toast.LENGTH_LONG).show(); //[cite: 8]
+                        }
+                    });
         });
 
         btnGoToRegister.setOnClickListener(v -> {
@@ -236,6 +242,7 @@ public class MainActivity extends AppCompatActivity {
         builder.setCancelable(false);
 
         EditText etRegName = view.findViewById(R.id.etRegName);
+        EditText etRegEmail = view.findViewById(R.id.etRegEmail);
         EditText etRegPassword = view.findViewById(R.id.etRegPassword);
         EditText etRegConfirmPassword = view.findViewById(R.id.etRegConfirmPassword);
         Button btnRegCancel = view.findViewById(R.id.btnRegCancel);
@@ -250,16 +257,17 @@ public class MainActivity extends AppCompatActivity {
 
         btnRegSubmit.setOnClickListener(v -> {
             String nameVal = etRegName.getText().toString().trim();
+            String email = etRegEmail.getText().toString().trim();
             String pass = etRegPassword.getText().toString().trim();
             String confirmPass = etRegConfirmPassword.getText().toString().trim();
 
-            if (nameVal.isEmpty()) {
-                Toast.makeText(this, "Please enter username", Toast.LENGTH_SHORT).show();
+            if (nameVal.isEmpty() || email.isEmpty() || pass.isEmpty()) {
+                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            if (!isValidPassword(pass)) {
-                Toast.makeText(this, "Password must be >= 6 chars and contain letters & numbers", Toast.LENGTH_LONG).show();
+            if (pass.length() < 6) { // בדיקת אורך סיסמה מעל 6 תווים כנדרש ב-Firebase[cite: 5, 7, 11]
+                Toast.makeText(this, "Password must be at least 6 characters", Toast.LENGTH_LONG).show(); //[cite: 5, 7, 11]
                 return;
             }
 
@@ -268,18 +276,20 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            ArrayList<ModelUser> existing = db.genericSelectByUserName(nameVal);
-            if (!existing.isEmpty()) {
-                Toast.makeText(this, "Username already exists!", Toast.LENGTH_SHORT).show();
-                return;
-            }
+            // יצירת משתמש חדש ב-Firebase Authentication[cite: 7]
+            mAuth.createUserWithEmailAndPassword(email, pass)
+                    .addOnCompleteListener(this, task -> {
+                        if (task.isSuccessful()) { //[cite: 7]
+                            ModelUser newUser = new ModelUser(email, 0, 0, pass);
+                            db.insert(newUser);
+                            Toast.makeText(this, "Registered Successfully!", Toast.LENGTH_SHORT).show();
 
-            ModelUser newUser = new ModelUser(nameVal, 0, 0, pass);
-            db.insert(newUser);
-            Toast.makeText(this, "Registered Successfully!", Toast.LENGTH_SHORT).show();
-
-            dialog.dismiss();
-            showLoginDialog();
+                            dialog.dismiss();
+                            showLoginDialog();
+                        } else {
+                            Toast.makeText(this, "Registration Failed: " + task.getException().getMessage(), Toast.LENGTH_LONG).show(); //[cite: 7]
+                        }
+                    });
         });
 
         dialog.show();

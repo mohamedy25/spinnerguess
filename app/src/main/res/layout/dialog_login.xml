@@ -15,11 +15,11 @@
         android:layout_marginBottom="16dp"/>
 
     <EditText
-        android:id="@+id/etLoginName"
+        android:id="@+id/etLoginEmail"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Username"
-        android:inputType="text"
+        android:hint="Email"
+        android:inputType="textEmailAddress"
         android:layout_marginBottom="12dp"/>
 
     <EditText
@@ -30,7 +30,6 @@
         android:inputType="textPassword"
         android:layout_marginBottom="20dp"/>
 
-    <!-- الكبستين المطلوبات للدايالوج الأول -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
