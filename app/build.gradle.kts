@@ -33,10 +33,19 @@ android {
 }
 
 dependencies {
+    // Firebase BOM (מנהל גרסאות תואמות לכל ספריות Firebase)
     implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
 
+    // ספריות Firebase
     implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-storage")
 
+    // ספריית Glide לטעינה והצגה של תמונות מ-Firebase Storage
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
+
+    // תלויות אנדרואיד קיימות
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)

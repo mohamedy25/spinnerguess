@@ -24,7 +24,7 @@ public class MainActivity extends AppCompatActivity {
     private Spinner spinnerDifficulty;
     private EditText etGuess, etName;
     private TextView tvFeedback, tvAttempts, tvTimer, tvScore;
-    private Button btnGuess, btnNewGame;
+    private Button btnGuess, btnNewGame, btnProfile, btnLogout;
 
     private GuessGame game;
     private CountDownTimer countDownTimer;
@@ -32,7 +32,7 @@ public class MainActivity extends AppCompatActivity {
     private int secondsRemaining = 0;
 
     private DBHelper db;
-    private FirebaseAuth mAuth; // הגדרת אובייקט Firebase Auth
+    private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,7 +40,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         db = new DBHelper(this);
-        mAuth = FirebaseAuth.getInstance(); // אתחול Firebase Auth[cite: 6]
+        mAuth = FirebaseAuth.getInstance();
 
         initViews();
         setupSpinner();
@@ -58,13 +58,20 @@ public class MainActivity extends AppCompatActivity {
 
         btnGuess.setOnClickListener(v -> handleGuess());
         btnNewGame.setOnClickListener(v -> startNewGame());
+
+        // מעבר למסך הפרופיל הלינארי (ProfileActivity)
+        btnProfile.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
+            startActivity(intent);
+        });
+
+        btnLogout.setOnClickListener(v -> handleLogout());
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        // בדיקה אם המשתמש כבר מחובר בעת העלייה למסך[cite: 9]
-        FirebaseUser currentUser = mAuth.getCurrentUser(); //[cite: 9]
+        FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
             etName.setText(currentUser.getEmail());
             startNewGame();
@@ -83,6 +90,8 @@ public class MainActivity extends AppCompatActivity {
         btnGuess = findViewById(R.id.btnGuess);
         btnNewGame = findViewById(R.id.btnNewGame);
         etName = findViewById(R.id.name);
+        btnProfile = findViewById(R.id.btnProfile);
+        btnLogout = findViewById(R.id.btnLogout);
     }
 
     private void setupSpinner() {
@@ -191,6 +200,15 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // ביצוע יציאה מהחשבון ומעבר למסך/דיאלוג ההתחברות[cite: 8, 9]
+    private void handleLogout() {
+        cancelTimer();
+        mAuth.signOut();
+        etName.setText("");
+        Toast.makeText(this, "Logged out successfully", Toast.LENGTH_SHORT).show();
+        showLoginDialog();
+    }
+
     private void showLoginDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View view = getLayoutInflater().inflate(R.layout.dialog_login, null);
@@ -216,13 +234,13 @@ public class MainActivity extends AppCompatActivity {
             // התחברות באמצעות Firebase Authentication[cite: 8]
             mAuth.signInWithEmailAndPassword(email, pass)
                     .addOnCompleteListener(this, task -> {
-                        if (task.isSuccessful()) { //[cite: 8]
+                        if (task.isSuccessful()) {
                             etName.setText(email);
                             Toast.makeText(this, "Login Successful!", Toast.LENGTH_SHORT).show();
                             dialog.dismiss();
                             startNewGame();
                         } else {
-                            Toast.makeText(this, "Authentication Failed: " + task.getException().getMessage(), Toast.LENGTH_LONG).show(); //[cite: 8]
+                            Toast.makeText(this, "Authentication Failed: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
                         }
                     });
         });
@@ -267,7 +285,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if (pass.length() < 6) { // בדיקת אורך סיסמה מעל 6 תווים כנדרש ב-Firebase[cite: 5, 7, 11]
-                Toast.makeText(this, "Password must be at least 6 characters", Toast.LENGTH_LONG).show(); //[cite: 5, 7, 11]
+                Toast.makeText(this, "Password must be at least 6 characters", Toast.LENGTH_LONG).show();
                 return;
             }
 
@@ -276,10 +294,9 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            // יצירת משתמש חדש ב-Firebase Authentication[cite: 7]
             mAuth.createUserWithEmailAndPassword(email, pass)
                     .addOnCompleteListener(this, task -> {
-                        if (task.isSuccessful()) { //[cite: 7]
+                        if (task.isSuccessful()) {
                             ModelUser newUser = new ModelUser(email, 0, 0, pass);
                             db.insert(newUser);
                             Toast.makeText(this, "Registered Successfully!", Toast.LENGTH_SHORT).show();
@@ -287,7 +304,7 @@ public class MainActivity extends AppCompatActivity {
                             dialog.dismiss();
                             showLoginDialog();
                         } else {
-                            Toast.makeText(this, "Registration Failed: " + task.getException().getMessage(), Toast.LENGTH_LONG).show(); //[cite: 7]
+                            Toast.makeText(this, "Registration Failed: " + task.getException().getMessage(), Toast.LENGTH_LONG).show();
                         }
                     });
         });
