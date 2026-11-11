@@ -10,7 +10,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text=" top ten players"
+        android:text="Top Players"
         android:textSize="24sp"
         android:textStyle="bold"
         android:layout_marginBottom="16dp"/>
@@ -18,8 +18,18 @@
     <ListView
         android:id="@+id/listViewTop10"
         android:layout_width="match_parent"
-        android:layout_height="193dp"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:divider="@android:color/darker_gray"
-        android:dividerHeight="1dp" />
+        android:dividerHeight="1dp"
+        android:layout_marginBottom="16dp" />
+
+    <!-- زر العودة -->
+    <Button
+        android:id="@+id/btnBackToGame"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Back to Game"
+        android:backgroundTint="@android:color/darker_gray" />
 
 </LinearLayout>

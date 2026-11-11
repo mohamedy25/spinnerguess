@@ -2,14 +2,22 @@ package com.example.spinnerguess;
 
 import android.os.Bundle;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.ListView;
+import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+
 import java.util.ArrayList;
 
 public class TopTenActivity extends AppCompatActivity {
 
     private ListView listViewTop10;
-    private DBHelper dbHelper;
+    private Button btnBackToGame;
+    private FirebaseFirestore firestore;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -17,28 +25,46 @@ public class TopTenActivity extends AppCompatActivity {
         setContentView(R.layout.activity_top_ten);
 
         listViewTop10 = findViewById(R.id.listViewTop10);
-        dbHelper = new DBHelper(this);
+        btnBackToGame = findViewById(R.id.btnBackToGame);
+        firestore = FirebaseFirestore.getInstance();
 
-        // جلب أعلى 3 مستخدمين فقط من قاعدة البيانات
-        ArrayList<ModelUser> topUsers = dbHelper.getTop3Users();
+        btnBackToGame.setOnClickListener(v -> finish());
 
-        // تجهيز النصوص لعرض اسم المستخدم والنتيجة لأفضل 3 لاعبين فقط
-        ArrayList<String> displayList = new ArrayList<>();
-        int rank = 1;
-        for (ModelUser user : topUsers) {
-            String playerName = user.getUserName();
-            int playerScore = user.getScore();
+        loadTopPlayersFromFirestore();
+    }
 
-            displayList.add(rank + ". " + playerName + "  -  Score: " + playerScore);
-            rank++;
-        }
+    private void loadTopPlayersFromFirestore() {
+        // جلب أعلى 3 لاعبين مرتبين تنازلياً بحسب النقاط (score) من Firestore
+        firestore.collection("users")
+                .orderBy("score", Query.Direction.DESCENDING)
+                .limit(3)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    ArrayList<String> displayList = new ArrayList<>();
+                    int rank = 1;
 
-        // ربط البيانات بالـ ListView عبر الـ Adapter
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                this,
-                android.R.layout.simple_list_item_1,
-                displayList
-        );
-        listViewTop10.setAdapter(adapter);
+                    for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
+                        String playerName = document.getString("name");
+                        if (playerName == null || playerName.isEmpty()) {
+                            playerName = document.getString("email");
+                        }
+
+                        Long scoreVal = document.getLong("score");
+                        int playerScore = (scoreVal != null) ? scoreVal.intValue() : 0;
+
+                        displayList.add(rank + ". " + playerName + "  -  Score: " + playerScore);
+                        rank++;
+                    }
+
+                    ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                            TopTenActivity.this,
+                            android.R.layout.simple_list_item_1,
+                            displayList
+                    );
+                    listViewTop10.setAdapter(adapter);
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(TopTenActivity.this, "Error loading top players: " + e.getMessage(), Toast.LENGTH_SHORT).show()
+                );
     }
 }

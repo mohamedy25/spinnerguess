@@ -36,6 +36,27 @@
             android:text="Select Image"
             android:layout_marginBottom="24dp"/>
 
+        <!-- اسم المستخدم -->
+        <EditText
+            android:id="@+id/etProfileName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Username / Display Name"
+            android:inputType="textPersonName"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- البريد الإلكتروني (غير قابل للتعديل) -->
+        <EditText
+            android:id="@+id/etProfileEmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Email"
+            android:inputType="textEmailAddress"
+            android:enabled="false"
+            android:focusable="false"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- رقم الهاتف -->
         <EditText
             android:id="@+id/etProfilePhone"
             android:layout_width="match_parent"
@@ -44,6 +65,7 @@
             android:inputType="phone"
             android:layout_marginBottom="16dp"/>
 
+        <!-- العنوان -->
         <EditText
             android:id="@+id/etProfileAddress"
             android:layout_width="match_parent"

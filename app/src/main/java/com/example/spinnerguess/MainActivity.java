@@ -16,8 +16,12 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.SetOptions;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -33,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
 
     private DBHelper db;
     private FirebaseAuth mAuth;
+    private FirebaseFirestore firestore;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,6 +46,7 @@ public class MainActivity extends AppCompatActivity {
 
         db = new DBHelper(this);
         mAuth = FirebaseAuth.getInstance();
+        firestore = FirebaseFirestore.getInstance();
 
         initViews();
         setupSpinner();
@@ -59,7 +65,6 @@ public class MainActivity extends AppCompatActivity {
         btnGuess.setOnClickListener(v -> handleGuess());
         btnNewGame.setOnClickListener(v -> startNewGame());
 
-        // מעבר למסך הפרופיל הלינארי (ProfileActivity)
         btnProfile.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
             startActivity(intent);
@@ -71,15 +76,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-        if (currentUser != null) {
-            etName.setText(currentUser.getEmail());
-            startNewGame();
-        } else {
-            showLoginDialog();
-        }
+        mAuth.signOut();
+        etName.setText("");
+        showLoginDialog();
     }
-
     private void initViews() {
         spinnerDifficulty = findViewById(R.id.spinnerDifficulty);
         etGuess = findViewById(R.id.etGuess);
@@ -188,8 +188,9 @@ public class MainActivity extends AppCompatActivity {
         if (name.isEmpty()) return;
 
         int currentScore = game.getScore();
-        ArrayList<ModelUser> users = db.genericSelectByUserName(name);
 
+        // 1. تحديث النتيجة في SQLite (قاعدة البيانات المحلية)
+        ArrayList<ModelUser> users = db.genericSelectByUserName(name);
         if (!users.isEmpty()) {
             ModelUser existingUser = users.get(0);
             if (currentScore > existingUser.getScore()) {
@@ -198,9 +199,35 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "New High Score Saved!", Toast.LENGTH_SHORT).show();
             }
         }
+
+        // 2. تحديث النتيجة في Firebase Firestore
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser != null) {
+            String uid = currentUser.getUid();
+
+            // جلب أعلى نتيجة سابقة من Firestore للتحقق قبل التحديث
+            firestore.collection("users").document(uid).get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        long oldScore = 0;
+                        if (documentSnapshot.exists() && documentSnapshot.contains("score")) {
+                            Long scoreVal = documentSnapshot.getLong("score");
+                            if (scoreVal != null) {
+                                oldScore = scoreVal;
+                            }
+                        }
+
+                        // تحديث النتيجة فقط إذا كانت النتيجة الجديدة أعلى من النتيجة القديمة
+                        if (currentScore > oldScore) {
+                            Map<String, Object> updateData = new HashMap<>();
+                            updateData.put("score", currentScore);
+
+                            firestore.collection("users").document(uid)
+                                    .set(updateData, com.google.firebase.firestore.SetOptions.merge());
+                        }
+                    });
+        }
     }
 
-    // ביצוע יציאה מהחשבון ומעבר למסך/דיאלוג ההתחברות[cite: 8, 9]
     private void handleLogout() {
         cancelTimer();
         mAuth.signOut();
@@ -231,7 +258,6 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            // התחברות באמצעות Firebase Authentication[cite: 8]
             mAuth.signInWithEmailAndPassword(email, pass)
                     .addOnCompleteListener(this, task -> {
                         if (task.isSuccessful()) {
@@ -284,7 +310,7 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            if (pass.length() < 6) { // בדיקת אורך סיסמה מעל 6 תווים כנדרש ב-Firebase[cite: 5, 7, 11]
+            if (pass.length() < 6) {
                 Toast.makeText(this, "Password must be at least 6 characters", Toast.LENGTH_LONG).show();
                 return;
             }
@@ -297,10 +323,22 @@ public class MainActivity extends AppCompatActivity {
             mAuth.createUserWithEmailAndPassword(email, pass)
                     .addOnCompleteListener(this, task -> {
                         if (task.isSuccessful()) {
-                            ModelUser newUser = new ModelUser(email, 0, 0, pass);
-                            db.insert(newUser);
-                            Toast.makeText(this, "Registered Successfully!", Toast.LENGTH_SHORT).show();
+                            FirebaseUser user = mAuth.getCurrentUser();
+                            if (user != null) {
+                                // حفظ اسم المستخدم والإيميل مبدئياً بداخل Firestore
+                                Map<String, Object> userData = new HashMap<>();
+                                userData.put("name", nameVal);
+                                userData.put("email", email);
+                                userData.put("score", 0);
 
+                                firestore.collection("users").document(user.getUid())
+                                        .set(userData, SetOptions.merge());
+                            }
+
+                            ModelUser newUser = new ModelUser(nameVal, 0, 0, pass);
+                            db.insert(newUser);
+
+                            Toast.makeText(this, "Registered Successfully!", Toast.LENGTH_SHORT).show();
                             dialog.dismiss();
                             showLoginDialog();
                         } else {

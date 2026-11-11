@@ -22,6 +22,7 @@ import com.bumptech.glide.Glide;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.SetOptions;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -31,13 +32,13 @@ import java.util.Map;
 public class ProfileActivity extends AppCompatActivity {
 
     private ImageView ivProfilePic;
-    private EditText etProfilePhone, etProfileAddress;
+    private EditText etProfileName, etProfileEmail, etProfilePhone, etProfileAddress;
     private Button btnSelectImage, btnSaveProfile, btnBack;
 
     private FirebaseAuth mAuth;
     private FirebaseFirestore firestore;
 
-    private String imageBase64String = null; // النص الذي سيحتوي على الصورة
+    private String imageBase64String = null;
 
     private ActivityResultLauncher<String> galleryLauncher;
     private ActivityResultLauncher<Void> cameraLauncher;
@@ -52,13 +53,15 @@ public class ProfileActivity extends AppCompatActivity {
         firestore = FirebaseFirestore.getInstance();
 
         ivProfilePic = findViewById(R.id.ivProfilePic);
+        etProfileName = findViewById(R.id.etProfileName);
+        etProfileEmail = findViewById(R.id.etProfileEmail);
         etProfilePhone = findViewById(R.id.etProfilePhone);
         etProfileAddress = findViewById(R.id.etProfileAddress);
         btnSelectImage = findViewById(R.id.btnSelectImage);
         btnSaveProfile = findViewById(R.id.btnSaveProfile);
         btnBack = findViewById(R.id.btnBack);
 
-        // 1. اختيار صورة من المعرض وتحويلها لـ Base64
+        // 1. اختيار صورة من المعرض
         galleryLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(),
                 uri -> {
@@ -69,7 +72,7 @@ public class ProfileActivity extends AppCompatActivity {
                 }
         );
 
-        // 2. التقاط صورة بالكاميرا وتحويلها لـ Base64
+        // 2. التقاط صورة بالكاميرا
         cameraLauncher = registerForActivityResult(
                 new ActivityResultContracts.TakePicturePreview(),
                 bitmap -> {
@@ -121,16 +124,13 @@ public class ProfileActivity extends AppCompatActivity {
         }
     }
 
-    // تحويل Bitmap إلى Base64 String
     private String convertBitmapToBase64(Bitmap bitmap) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        // ضغط الصورة حتى لا يتجاوز حجم الحقل 1 ميغابايت في Firestore
         bitmap.compress(Bitmap.CompressFormat.JPEG, 70, baos);
         byte[] byteArray = baos.toByteArray();
         return Base64.encodeToString(byteArray, Base64.DEFAULT);
     }
 
-    // تحويل Uri إلى Base64 String
     private String convertUriToBase64(Uri uri) {
         try {
             InputStream inputStream = getContentResolver().openInputStream(uri);
@@ -146,20 +146,33 @@ public class ProfileActivity extends AppCompatActivity {
         FirebaseUser user = mAuth.getCurrentUser();
         if (user == null) return;
 
+        // عرض الإيميل مباشرة من FirebaseAuth
+        if (user.getEmail() != null) {
+            etProfileEmail.setText(user.getEmail());
+        }
+
         String uid = user.getUid();
         firestore.collection("users").document(uid).get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (isFinishing() || isDestroyed()) return;
 
                     if (documentSnapshot.exists()) {
+                        String name = documentSnapshot.getString("name");
                         String phone = documentSnapshot.getString("phone");
                         String address = documentSnapshot.getString("address");
                         String base64Image = documentSnapshot.getString("imageBase64");
 
+                        // عرض الاسم المجلوبي من Firestore، وفي حال عدم وجوده يتم وضع الاسم المبدئي من البريد
+                        if (name != null && !name.isEmpty()) {
+                            etProfileName.setText(name);
+                        } else if (user.getEmail() != null) {
+                            String defaultName = user.getEmail().split("@")[0];
+                            etProfileName.setText(defaultName);
+                        }
+
                         if (phone != null) etProfilePhone.setText(phone);
                         if (address != null) etProfileAddress.setText(address);
 
-                        // عرض صورة Base64 بواسطة Glide
                         if (base64Image != null && !base64Image.isEmpty()) {
                             byte[] decodedString = Base64.decode(base64Image, Base64.DEFAULT);
                             Glide.with(ProfileActivity.this)
@@ -176,26 +189,34 @@ public class ProfileActivity extends AppCompatActivity {
         if (user == null) return;
 
         String uid = user.getUid();
+        String name = etProfileName.getText().toString().trim();
+        String email = etProfileEmail.getText().toString().trim();
         String phone = etProfilePhone.getText().toString().trim();
         String address = etProfileAddress.getText().toString().trim();
+
+        if (name.isEmpty()) {
+            Toast.makeText(this, "Name cannot be empty", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         btnSaveProfile.setEnabled(false);
         Toast.makeText(this, "Saving Profile...", Toast.LENGTH_SHORT).show();
 
         Map<String, Object> userData = new HashMap<>();
+        userData.put("name", name);
+        userData.put("email", email);
         userData.put("phone", phone);
         userData.put("address", address);
 
-        // إذا تم تغيير الصورة نضع نص Base64 الجديد
         if (imageBase64String != null) {
             userData.put("imageBase64", imageBase64String);
         }
 
-        // حفظ مباشر وموحد في Firestore
         firestore.collection("users").document(uid)
-                .set(userData, com.google.firebase.firestore.SetOptions.merge())
+                .set(userData, SetOptions.merge())
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(ProfileActivity.this, "Profile Saved Successfully!", Toast.LENGTH_SHORT).show();
+                    btnSaveProfile.setEnabled(true);
                     finish();
                 })
                 .addOnFailureListener(e -> {
