@@ -73,13 +73,6 @@ public class MainActivity extends AppCompatActivity {
         btnLogout.setOnClickListener(v -> handleLogout());
     }
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-        mAuth.signOut();
-        etName.setText("");
-        showLoginDialog();
-    }
     private void initViews() {
         spinnerDifficulty = findViewById(R.id.spinnerDifficulty);
         etGuess = findViewById(R.id.etGuess);

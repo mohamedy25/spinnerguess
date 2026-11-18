@@ -217,7 +217,6 @@ public class ProfileActivity extends AppCompatActivity {
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(ProfileActivity.this, "Profile Saved Successfully!", Toast.LENGTH_SHORT).show();
                     btnSaveProfile.setEnabled(true);
-                    finish();
                 })
                 .addOnFailureListener(e -> {
                     btnSaveProfile.setEnabled(true);
