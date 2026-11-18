@@ -71,6 +71,14 @@ public class MainActivity extends AppCompatActivity {
         });
 
         btnLogout.setOnClickListener(v -> handleLogout());
+        findViewById(R.id.btnClients).setOnClickListener(v ->
+                startActivity(new Intent(MainActivity.this, ClientListActivity.class)));
+
+        if (savedInstanceState == null) {
+            mAuth.signOut();
+            etName.setText("");
+            showLoginDialog();
+        }
     }
 
     private void initViews() {
